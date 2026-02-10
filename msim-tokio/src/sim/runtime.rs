@@ -31,8 +31,9 @@ impl Handle {
     }
 
     pub fn try_current() -> Result<Self, TryCurrentError> {
-        // TODO: don't panic
-        Ok(Self::current())
+        ms_runtime::Handle::try_current()
+            .map(|inner| Self { inner })
+            .ok_or(TryCurrentError)
     }
 
     pub fn current() -> Self {
