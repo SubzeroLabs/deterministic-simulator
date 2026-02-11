@@ -404,6 +404,14 @@ impl TcpStream {
         self.state.ep.local_addr()
     }
 
+    /// Simulated TcpStream has no real OS socket, so this always returns an error.
+    pub fn into_std(self) -> io::Result<std::net::TcpStream> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "into_std() is not supported for simulated TcpStream",
+        ))
+    }
+
     pub fn into_split(self) -> (tcp::OwnedReadHalf, tcp::OwnedWriteHalf) {
         tcp::split_owned(self)
     }
