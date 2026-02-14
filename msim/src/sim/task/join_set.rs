@@ -142,3 +142,18 @@ impl<T> Default for JoinSet<T> {
         Self::new()
     }
 }
+
+impl<T, F> std::iter::FromIterator<F> for JoinSet<T>
+where
+    F: Future<Output = T>,
+    F: Send + 'static,
+    T: Send + 'static,
+{
+    fn from_iter<I: IntoIterator<Item = F>>(iter: I) -> Self {
+        let mut set = Self::new();
+        iter.into_iter().for_each(|task| {
+            set.spawn(task);
+        });
+        set
+    }
+}
