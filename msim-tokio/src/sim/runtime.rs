@@ -1,11 +1,6 @@
-use std::fmt;
-use std::future::Future;
-use std::io;
-use std::time::Duration;
+use std::{fmt, future::Future, io, time::Duration};
 
-use msim::runtime as ms_runtime;
-use msim::task::JoinHandle;
-
+use msim::{runtime as ms_runtime, task::JoinHandle};
 use tracing::{debug, warn};
 
 #[derive(Clone)]
@@ -358,7 +353,7 @@ impl fmt::Debug for Builder {
 
 /// A group of tasks that all run on the same thread. Because the simulator is single-threaded,
 /// this just passes the spawn_local calls through to the current task node.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LocalSet;
 
 impl LocalSet {

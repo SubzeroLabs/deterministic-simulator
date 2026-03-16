@@ -3,7 +3,6 @@
 pub use crate::net::config::*;
 
 /// Simulation configuration.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Debug, Default, Clone)]
 pub struct SimConfig {
     /// Network configurations.
@@ -42,9 +41,10 @@ impl From<Vec<(usize, SimConfig)>> for TestConfig {
 #[cfg(test)]
 mod test {
 
-    use super::*;
     use msim_macros::sim_test;
     use rand::Rng;
+
+    use super::*;
 
     fn test_config() -> SimConfig {
         Default::default()

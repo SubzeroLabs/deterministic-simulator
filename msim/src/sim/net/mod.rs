@@ -46,6 +46,7 @@ use std::{
     },
     task::Context,
 };
+
 use tap::TapFallible;
 use tracing::*;
 
@@ -67,7 +68,6 @@ use crate::{
 pub mod network;
 
 /// Network simulator.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 pub struct NetSim {
     network: Mutex<Network>,
     host_state: Mutex<HostNetworkState>,
@@ -333,7 +333,7 @@ unsafe fn accept_impl(
             let net = plugin::simulator::<NetSim>();
             let network = net.network.lock().unwrap();
 
-            let endpoint = socket.endpoint.as_ref().ok_or_else(|| (-1, libc::EINVAL))?;
+            let endpoint = socket.endpoint.as_ref().ok_or((-1, libc::EINVAL))?;
 
             if endpoint.peer.is_some() {
                 // attempt to accept on a socket that is already connected.
@@ -737,7 +737,7 @@ define_sys_interceptor!(
         flags: libc::c_int,
     ) -> libc::c_int {
         HostNetworkState::with_socket(sockfd, |socket| {
-            let msgs = std::slice::from_raw_parts_mut(msgvec as *mut libc::mmsghdr, vlen as _);
+            let msgs = std::slice::from_raw_parts_mut(msgvec, vlen as _);
 
             for msg in msgs.iter_mut() {
                 let dst_addr = msg_hdr_to_socket(&msg.msg_hdr);
@@ -821,11 +821,7 @@ unsafe fn recv_impl(ep: &Endpoint, msg: *mut libc::msghdr) -> CResult<libc::ssiz
     if copy_len < payload.len() {
         msg.msg_flags |= libc::MSG_TRUNC;
     }
-    std::ptr::copy_nonoverlapping(
-        payload.as_ptr() as *const u8,
-        iov.iov_base as *mut u8,
-        copy_len,
-    );
+    std::ptr::copy_nonoverlapping(payload.as_ptr(), iov.iov_base as *mut u8, copy_len);
 
     // TODO: create control messages (e.g. original destination addr)
     msg.msg_control = std::ptr::null_mut();
@@ -867,7 +863,7 @@ define_sys_interceptor!(
             assert!(vlen >= 1);
 
             let msgvec = &mut *msgvec;
-            let msgs = std::slice::from_raw_parts_mut(msgvec as *mut libc::mmsghdr, vlen as _);
+            let msgs = std::slice::from_raw_parts_mut(msgvec, vlen as _);
 
             msgs[0].msg_len = recv_impl(&ep, &mut msgs[0].msg_hdr as *mut libc::msghdr)
                 .map_err(|(ret, errno)| (ret.try_into().unwrap(), errno))?
@@ -1208,7 +1204,6 @@ impl Endpoint {
     ///
     /// NOTE: Applications should not use this function!
     /// It is provided for use by other simulators.
-    #[cfg_attr(docsrs, doc(cfg(msim)))]
     pub async fn send_to_raw(&self, dst: SocketAddr, tag: u64, data: Payload) -> io::Result<()> {
         self.send_to_raw_sync(dst, tag, data)?;
         self.net.rand_delay().await;
@@ -1219,7 +1214,6 @@ impl Endpoint {
     ///
     /// NOTE: Applications should not use this function!
     /// It is provided for use by other simulators.
-    #[cfg_attr(docsrs, doc(cfg(msim)))]
     pub fn send_to_raw_sync(&self, dst: SocketAddr, tag: u64, data: Payload) -> io::Result<()> {
         trace!(
             "send_to_raw {} -> {}, {:x} {:?}",
@@ -1239,7 +1233,6 @@ impl Endpoint {
     ///
     /// NOTE: Applications should not use this function!
     /// It is provided for use by other simulators.
-    #[cfg_attr(docsrs, doc(cfg(msim)))]
     pub async fn recv_from_raw(&self, tag: u64) -> io::Result<(Payload, SocketAddr)> {
         trace!("awaiting recv: {} tag={:x}", self.addr, tag);
         let recver =
@@ -1280,7 +1273,6 @@ impl Endpoint {
     ///
     /// NOTE: Applications should not use this function!
     /// It is provided for use by other simulators.
-    #[cfg_attr(docsrs, doc(cfg(msim)))]
     pub async fn send_raw(&self, tag: u64, data: Payload) -> io::Result<()> {
         let peer = self.peer_addr()?;
         self.send_to_raw(peer, tag, data).await
@@ -1290,7 +1282,6 @@ impl Endpoint {
     ///
     /// NOTE: Applications should not use this function!
     /// It is provided for use by other simulators.
-    #[cfg_attr(docsrs, doc(cfg(msim)))]
     pub async fn recv_raw(&self, tag: u64) -> io::Result<Payload> {
         let peer = self.peer_addr()?;
         let (msg, from) = self.recv_from_raw(tag).await?;
@@ -1344,6 +1335,8 @@ impl Drop for Endpoint {
 
 #[cfg(test)]
 mod tests {
+    use tokio::sync::Barrier;
+
     use super::*;
     use crate::{
         net::network::Payload,
@@ -1351,7 +1344,6 @@ mod tests {
         runtime::{init_logger, Handle, Runtime},
         time::*,
     };
-    use tokio::sync::Barrier;
 
     macro_rules! payload {
         ($e: expr) => {{

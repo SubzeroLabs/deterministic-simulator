@@ -1,6 +1,3 @@
-use super::config::NetworkConfig;
-use crate::{plugin, rand::*, task::NodeId, time::TimeHandle};
-use futures::channel::oneshot;
 use std::{
     any::Any,
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
@@ -10,8 +7,12 @@ use std::{
     task::{Context, Waker},
 };
 
+use futures::channel::oneshot;
 use tap::TapOptional;
 use tracing::*;
+
+use super::config::NetworkConfig;
+use crate::{plugin, rand::*, task::NodeId, time::TimeHandle};
 
 /// A simulated network.
 pub(crate) struct Network {
@@ -60,7 +61,6 @@ impl Default for Node {
 }
 
 /// Network statistics.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Debug, Default, Clone)]
 pub struct Stat {
     /// Total number of messages.
@@ -533,24 +533,15 @@ impl Payload {
     }
 
     pub fn is_udp(&self) -> bool {
-        match self.ty {
-            PayloadType::Udp => true,
-            _ => false,
-        }
+        matches!(self.ty, PayloadType::Udp)
     }
 
     pub fn is_tcp_data(&self) -> bool {
-        match self.ty {
-            PayloadType::TcpData => true,
-            _ => false,
-        }
+        matches!(self.ty, PayloadType::TcpData)
     }
 
     pub fn is_tcp_connect(&self) -> bool {
-        match self.ty {
-            PayloadType::TcpSignalConnect => true,
-            _ => false,
-        }
+        matches!(self.ty, PayloadType::TcpSignalConnect)
     }
 }
 

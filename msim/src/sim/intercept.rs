@@ -1,8 +1,9 @@
 use std::cell::Cell;
+
 use tracing::info;
 
 thread_local! {
-    static INTERCEPTS_ENABLED: Cell<bool> = Cell::new(false);
+    static INTERCEPTS_ENABLED: Cell<bool> = const { Cell::new(false) };
 }
 
 // This is called at the beginning of the test thread so that clock calls inside the test are
@@ -43,7 +44,7 @@ macro_rules! define_sys_interceptor {
                 };
             }
 
-            if !crate::sim::intercept::intercepts_enabled() {
+            if !$crate::sim::intercept::intercepts_enabled() {
                 return NEXT_DL_SYM($($param),*);
             }
 

@@ -20,32 +20,32 @@
 //!
 //! [`rand`]: rand
 
+use std::{
+    cell::Cell,
+    sync::{Arc, Mutex},
+};
+
 pub use rand;
+// TODO: mock `rngs` module
+#[doc(no_inline)]
+pub use rand::{distributions, seq, CryptoRng, Error, Fill, Rng, RngCore, SeedableRng};
 use rand::{
     distributions::Standard,
     prelude::{Distribution, SmallRng},
 };
 
-use std::cell::Cell;
-use std::sync::{Arc, Mutex};
-
-// TODO: mock `rngs` module
-
-#[doc(no_inline)]
-pub use rand::{distributions, seq, CryptoRng, Error, Fill, Rng, RngCore, SeedableRng};
-
 /// Convenience re-export of common members
 pub mod prelude {
-    #[doc(no_inline)]
-    pub use super::{random, thread_rng};
     #[doc(no_inline)]
     pub use rand::prelude::{
         CryptoRng, Distribution, IteratorRandom, Rng, RngCore, SeedableRng, SliceRandom,
     };
+
+    #[doc(no_inline)]
+    pub use super::{random, thread_rng};
 }
 
 /// Global deterministic random number generator.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Clone)]
 pub struct GlobalRng {
     inner: Arc<Mutex<Inner>>,
@@ -157,7 +157,6 @@ where
 }
 
 /// Random log for determinism check.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Debug, PartialEq, Eq)]
 pub struct Log(Vec<u8>);
 
@@ -171,7 +170,7 @@ fn init_std_random_state(seed: u64) -> bool {
 }
 
 thread_local! {
-    static SEED: Cell<Option<u64>> = Cell::new(None);
+    static SEED: Cell<Option<u64>> = const { Cell::new(None) };
 }
 
 /// Obtain a series of random bytes.
@@ -210,7 +209,7 @@ unsafe extern "C" fn getrandom(mut buf: *mut u8, mut buflen: usize, _flags: u32)
         // not in msim, call the original function.
         lazy_static::lazy_static! {
             static ref GETRANDOM: unsafe extern "C" fn(buf: *mut u8, buflen: usize, flags: u32) -> isize = unsafe {
-                let ptr = libc::dlsym(libc::RTLD_NEXT, b"getrandom\0".as_ptr() as _);
+                let ptr = libc::dlsym(libc::RTLD_NEXT, c"getrandom".as_ptr());
                 assert!(!ptr.is_null());
                 std::mem::transmute(ptr)
             };
@@ -267,8 +266,9 @@ unsafe extern "C" fn getentropy(buf: *mut u8, buflen: usize) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::runtime::Runtime;
     use std::collections::{BTreeSet, HashMap};
+
+    use crate::runtime::Runtime;
 
     #[test]
     // NOTE:

@@ -6,10 +6,9 @@ use std::{
     task::{Context, Poll},
 };
 
+use bytes::BufMut;
 use msim::net::{get_endpoint_from_socket, Endpoint, OwnedFd};
 use real_tokio::io::{Interest, ReadBuf, Ready};
-
-use bytes::BufMut;
 
 #[derive(Debug)]
 pub struct UdpSocket {
@@ -64,11 +63,11 @@ impl UdpSocket {
     }
 
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        Ok(self.ep.local_addr()?)
+        self.ep.local_addr()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        Ok(self.ep.peer_addr()?)
+        self.ep.peer_addr()
     }
 
     pub async fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {

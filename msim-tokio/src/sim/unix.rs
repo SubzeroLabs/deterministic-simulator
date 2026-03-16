@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use bytes::BufMut;
+pub use std::os::unix::net::SocketAddr;
 use std::{
     io,
     net::Shutdown,
@@ -14,10 +14,9 @@ use std::{
     task::{Context, Poll},
 };
 
+use bytes::BufMut;
 use real_tokio::io::{AsyncRead, AsyncWrite, Interest, ReadBuf, Ready};
-
 pub use real_tokio::net::unix::UCred;
-pub use std::os::unix::net::SocketAddr;
 
 /// Provide the tokio::net::UnixListener interface.
 #[derive(Debug)]

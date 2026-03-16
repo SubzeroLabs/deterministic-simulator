@@ -1,10 +1,11 @@
 //! Network configuration
 
+use std::{collections::HashMap, ops::Range, sync::Arc, time::Duration};
+
 use rand::{
     distributions::{Distribution, Uniform},
     seq::SliceRandom,
 };
-use std::{collections::HashMap, ops::Range, sync::Arc, time::Duration};
 
 use crate::{rand::*, task::NodeId};
 
@@ -111,7 +112,7 @@ impl InterNodeLatency for InterNodeLatencyMap {
             return Some(dist.sample(rng));
         }
 
-        return None;
+        None
     }
 }
 
@@ -254,7 +255,6 @@ impl PacketLossConfig {
 }
 
 /// Network configurations.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Debug, Clone, Default)]
 pub struct NetworkConfig {
     /// Possibility of packet loss (for UDP connections only).

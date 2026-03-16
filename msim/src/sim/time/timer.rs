@@ -5,16 +5,18 @@
 
 //! A simply priority-queue timer implementation.
 //!
-//! Code originally from https://github.com/rcore-os/naive-timer (MIT license)
+//! Code originally from <https://github.com/rcore-os/naive-timer> (MIT license)
 
-use std::cell::Cell;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashSet};
-use std::time::Duration;
-
-use crate::task::NodeId;
+use std::{
+    cell::Cell,
+    cmp::Ordering,
+    collections::{BinaryHeap, HashSet},
+    time::Duration,
+};
 
 use tracing::{debug, info};
+
+use crate::task::NodeId;
 
 /// A naive timer.
 #[derive(Default)]
@@ -111,6 +113,7 @@ impl PartialEq for Event {
 impl Eq for Event {}
 
 // BinaryHeap is a max-heap. So we need to reverse the order.
+#[allow(clippy::non_canonical_partial_ord_impl)]
 impl PartialOrd for Event {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         other.deadline.partial_cmp(&self.deadline)

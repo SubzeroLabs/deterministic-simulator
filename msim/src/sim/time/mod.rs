@@ -2,8 +2,6 @@
 //!
 //!
 
-use crate::rand::{GlobalRng, Rng};
-use crate::{context, define_bypass, define_sys_interceptor, task::NodeId};
 #[doc(no_inline)]
 pub use std::time::Duration;
 use std::{
@@ -15,8 +13,13 @@ use std::{
 };
 
 use pin_project_lite::pin_project;
-
 use tracing::{trace, warn};
+
+use crate::{
+    context, define_bypass, define_sys_interceptor,
+    rand::{GlobalRng, Rng},
+    task::NodeId,
+};
 
 pub mod error;
 mod instant;
@@ -26,9 +29,11 @@ mod timer;
 
 use timer::Timer;
 
-pub use self::instant::Instant;
-pub use self::interval::{interval, interval_at, Interval, MissedTickBehavior};
-pub use self::sleep::{sleep, sleep_until, Sleep};
+pub use self::{
+    instant::Instant,
+    interval::{interval, interval_at, Interval, MissedTickBehavior},
+    sleep::{sleep, sleep_until, Sleep},
+};
 
 pub(crate) struct TimeRuntime {
     handle: TimeHandle,
@@ -578,7 +583,10 @@ define_sys_interceptor!(
             // used by Instant
             libc::CLOCK_MONOTONIC | libc::CLOCK_MONOTONIC_RAW | libc::CLOCK_MONOTONIC_COARSE => {
                 // Instant is the same layout as timespec on linux
-                ts.write(std::mem::transmute(time.now_instant()));
+                ts.write(std::mem::transmute::<
+                    crate::sim::time::instant::Instant,
+                    libc::timespec,
+                >(time.now_instant()));
             }
 
             // Used by rocksdb performance timers.

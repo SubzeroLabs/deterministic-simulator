@@ -1,20 +1,23 @@
 //! Collection types.
 
-use crate::rand::{thread_rng, Rng};
-use serde::{
-    de::{Deserialize, Deserializer},
-    ser::{Serialize, Serializer},
-};
-use std::borrow::Borrow;
-use std::fmt::{self, Debug};
-use std::hash::{BuildHasher, Hash};
-use std::ops::{BitAnd, BitOr, BitXor, Deref, DerefMut, Index, Sub};
-use std::panic::UnwindSafe;
-
 pub use std::collections::{
     binary_heap, btree_map, btree_set, hash_map, hash_set, linked_list, vec_deque, BTreeMap,
     BTreeSet, BinaryHeap, LinkedList, TryReserveError, VecDeque,
 };
+use std::{
+    borrow::Borrow,
+    fmt::{self, Debug},
+    hash::{BuildHasher, Hash},
+    ops::{BitAnd, BitOr, BitXor, Deref, DerefMut, Index, Sub},
+    panic::UnwindSafe,
+};
+
+use serde::{
+    de::{Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
+
+use crate::rand::{thread_rng, Rng};
 
 /// A deterministic random state.
 ///
@@ -202,7 +205,7 @@ impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type Item = &'a T;
     type IntoIter = hash_set::Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
-        (&self.0).iter()
+        self.0.iter()
     }
 }
 
@@ -359,7 +362,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
     type IntoIter = hash_map::Iter<'a, K, V>;
     fn into_iter(self) -> Self::IntoIter {
-        (&self.0).iter()
+        self.0.iter()
     }
 }
 
@@ -367,7 +370,7 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = hash_map::IterMut<'a, K, V>;
     fn into_iter(self) -> Self::IntoIter {
-        (&mut self.0).iter_mut()
+        self.0.iter_mut()
     }
 }
 

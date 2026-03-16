@@ -1,14 +1,14 @@
 //! Thread local runtime context
+use std::{cell::RefCell, sync::Arc};
+
 use crate::{
     runtime::Handle,
     task::{NodeId, TaskInfo},
 };
 
-use std::{cell::RefCell, sync::Arc};
-
 thread_local! {
-    static CONTEXT: RefCell<Option<Handle>> = RefCell::new(None);
-    static TASK: RefCell<Option<Arc<TaskInfo>>> = RefCell::new(None);
+    static CONTEXT: RefCell<Option<Handle>> = const { RefCell::new(None) };
+    static TASK: RefCell<Option<Arc<TaskInfo>>> = const { RefCell::new(None) };
 }
 
 pub(crate) fn current<T>(map: impl FnOnce(&Handle) -> T) -> T {
