@@ -13,7 +13,10 @@ use std::{
     future::Future,
     io::Write,
     net::IpAddr,
-    sync::{Arc, Mutex, RwLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, RwLock,
+    },
     time::Duration,
 };
 use tokio::sync::oneshot;
@@ -69,6 +72,7 @@ impl Runtime {
             task: task.handle().clone(),
             sims: Default::default(),
             config,
+            watchdog_suppressed: Arc::new(AtomicBool::new(false)),
         };
         let rt = Runtime { rand, task, handle };
         rt.add_simulator::<fs::FsSim>();
@@ -255,6 +259,13 @@ fn start_watchdog_with(
                 let _ = std::io::stdout().flush();
                 std::process::abort();
             }
+            if rt.handle.is_watchdog_suppressed() {
+                // Reset the counter while suppressed so heavy setup phases
+                // don't accumulate stalls toward the deadlock limit.
+                deadlock_count = 0;
+                prev_time = now;
+                continue;
+            }
             if now == prev_time {
                 warn!("possible deadlock detected...");
                 deadlock_count += 1;
@@ -284,6 +295,7 @@ pub struct Handle {
     pub(crate) task: task::TaskHandle,
     pub(crate) sims: Arc<Mutex<HashMap<TypeId, Arc<dyn plugin::Simulator>>>>,
     pub(crate) config: SimConfig,
+    watchdog_suppressed: Arc<AtomicBool>,
 }
 
 impl Handle {
@@ -361,6 +373,35 @@ impl Handle {
     /// Get the TimeHandle
     pub fn time(&self) -> &time::TimeHandle {
         &self.time
+    }
+
+    /// Suppress the watchdog for the duration of the returned guard.
+    ///
+    /// While the guard is alive, the watchdog will not count stalls against
+    /// the deadlock limit. This is useful during heavy setup phases where the
+    /// simulator may take a long time to drain ready tasks without advancing
+    /// simulated time.
+    pub fn suppress_watchdog(&self) -> WatchdogSuppressionGuard {
+        self.watchdog_suppressed.store(true, Ordering::Relaxed);
+        WatchdogSuppressionGuard {
+            flag: Arc::clone(&self.watchdog_suppressed),
+        }
+    }
+
+    /// Check whether the watchdog is currently suppressed.
+    pub(crate) fn is_watchdog_suppressed(&self) -> bool {
+        self.watchdog_suppressed.load(Ordering::Relaxed)
+    }
+}
+
+/// RAII guard that re-enables the watchdog when dropped.
+pub struct WatchdogSuppressionGuard {
+    flag: Arc<AtomicBool>,
+}
+
+impl Drop for WatchdogSuppressionGuard {
+    fn drop(&mut self) {
+        self.flag.store(false, Ordering::Relaxed);
     }
 }
 
