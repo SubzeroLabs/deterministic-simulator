@@ -1,15 +1,19 @@
 pub use real_tokio::io::*;
 
 pub mod unix {
+    use std::{
+        os::unix::io::{AsRawFd, RawFd},
+        sync::atomic::{AtomicU64, Ordering},
+        task::{Context, Poll},
+    };
+
     use futures::{future::poll_fn, ready};
-    use msim::net::get_endpoint_from_socket;
-    use msim::rand::{prelude::thread_rng, Rng};
-    use msim::time::{Duration, Instant, TimeHandle};
-    use real_tokio::io;
-    use real_tokio::io::Interest;
-    use std::os::unix::io::{AsRawFd, RawFd};
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use std::{task::Context, task::Poll};
+    use msim::{
+        net::get_endpoint_from_socket,
+        rand::{prelude::thread_rng, Rng},
+        time::{Duration, Instant, TimeHandle},
+    };
+    use real_tokio::{io, io::Interest};
 
     /// Reimplementation of AsyncFd for simulator.
     /// Only works with UDP sockets right now.
@@ -160,7 +164,7 @@ pub mod unix {
                 _ => unimplemented!("unhandled interested {:?}", interest),
             }
 
-            Ok(AsyncFdReadyMutGuard { async_fd: self }).into()
+            Ok(AsyncFdReadyMutGuard { async_fd: self })
         }
 
         #[allow(clippy::needless_lifetimes)] // The lifetime improves rustdoc rendering.

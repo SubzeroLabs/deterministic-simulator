@@ -119,13 +119,13 @@ pub fn test(_args: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// - `MSIM_TEST_CONFIG`: Set the config file path.
 ///
-///     By default, tests will use the default configuration.
+///   By default, tests will use the default configuration.
 ///
 /// - `MSIM_TEST_TIME_LIMIT`: Set the time limit for the test.
 ///
-///     The test will panic if time limit exceeded in the simulation.
+///   The test will panic if time limit exceeded in the simulation.
 ///
-///     By default, there is no time limit.
+///   By default, there is no time limit.
 ///
 /// Retired configuration (test frameworks may keep per-test state in process globals,
 /// which multiple simulations per process would share):

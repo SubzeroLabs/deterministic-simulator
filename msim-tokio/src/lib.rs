@@ -12,8 +12,9 @@ mod sim {
 
     // simulated API
     pub mod task {
-        pub use crate::runtime::LocalSet;
         pub use msim::task::*;
+
+        pub use crate::runtime::LocalSet;
     }
 
     #[cfg(feature = "rt")]

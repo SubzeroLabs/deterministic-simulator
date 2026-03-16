@@ -26,13 +26,16 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
  */
 
-use crate::time::{sleep_until, Duration, Instant, Sleep};
-use futures::future::poll_fn;
-use futures::ready;
+use std::{
+    convert::TryInto,
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::{convert::TryInto, future::Future};
+use futures::{future::poll_fn, ready};
+
+use crate::time::{sleep_until, Duration, Instant, Sleep};
 
 /// Creates new [`Interval`] that yields with interval of `period`.
 pub fn interval(period: Duration) -> Interval {

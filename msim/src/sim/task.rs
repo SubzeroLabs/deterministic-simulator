@@ -1,17 +1,5 @@
 //! Asynchronous tasks executor.
 
-use super::{
-    context,
-    rand::GlobalRng,
-    runtime,
-    time::{TimeHandle, TimeRuntime},
-    utils::mpsc,
-};
-use crate::assert_send_sync;
-use async_task::{FallibleTask, Runnable};
-use erasable::{ErasablePtr, ErasedPtr};
-use futures::pin_mut;
-use rand::Rng;
 use std::{
     collections::HashMap,
     fmt,
@@ -27,14 +15,27 @@ use std::{
     time::Duration,
 };
 
+use async_task::{FallibleTask, Runnable};
+use erasable::{ErasablePtr, ErasedPtr};
+use futures::pin_mut;
+use rand::Rng;
+use tokio::sync::oneshot;
+pub use tokio::{
+    msim_adapter::{join_error, runtime_task, runtime_task::Id},
+    select,
+    sync::watch,
+    task::{coop, yield_now, JoinError},
+};
 use tracing::{error_span, info, trace, Span};
 
-pub use tokio::msim_adapter::runtime_task::Id;
-pub use tokio::msim_adapter::{join_error, runtime_task};
-use tokio::sync::oneshot;
-pub use tokio::task::coop;
-pub use tokio::task::{yield_now, JoinError};
-pub use tokio::{select, sync::watch};
+use super::{
+    context,
+    rand::GlobalRng,
+    runtime,
+    time::{TimeHandle, TimeRuntime},
+    utils::mpsc,
+};
+use crate::assert_send_sync;
 
 pub mod join_set;
 pub use join_set::JoinSet;
@@ -133,7 +134,6 @@ pub(crate) struct Executor {
 }
 
 /// A unique identifier for a node.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct NodeId(pub u64);
 
@@ -161,6 +161,7 @@ struct PanicWrapper {
     restart_after: Option<Duration>,
 }
 
+#[allow(clippy::type_complexity)]
 struct PanicHookGuard(Option<Box<dyn Fn(&std::panic::PanicHookInfo<'_>) + Sync + Send + 'static>>);
 
 impl PanicHookGuard {
@@ -503,6 +504,7 @@ pub(crate) struct TaskHandle {
 }
 assert_send_sync!(TaskHandle);
 
+#[allow(clippy::type_complexity)]
 struct Node {
     info: Arc<TaskInfo>,
     paused: Vec<Runnable>,
@@ -562,6 +564,7 @@ impl TaskHandle {
     }
 
     /// Create a new node.
+    #[allow(clippy::type_complexity)]
     pub fn create_node(
         &self,
         name: Option<String>,
@@ -860,7 +863,7 @@ impl<T> JoinHandle<T> {
     /// Return an AbortHandle corresponding for the task.
     pub fn abort_handle(&self) -> AbortHandle {
         let inner = ErasablePtr::erase(Box::new(self.inner.clone()));
-        let id = self.id.clone();
+        let id = self.id;
         AbortHandle { id, inner }
     }
 }
@@ -875,11 +878,11 @@ impl<T> Future for JoinHandle<T> {
         let mut lock = self.inner.task.lock().unwrap();
         let task = lock.as_mut();
         if task.is_none() {
-            return std::task::Poll::Ready(Err(join_error::cancelled(self.id.clone())));
+            return std::task::Poll::Ready(Err(join_error::cancelled(self.id)));
         }
         std::pin::Pin::new(task.unwrap()).poll(cx).map(|res| {
             // TODO: decide cancelled or panic
-            res.ok_or(join_error::cancelled(self.id.clone()))
+            res.ok_or(join_error::cancelled(self.id))
         })
     }
 }
@@ -917,6 +920,7 @@ impl AbortHandle {
         ret
     }
 
+    #[allow(clippy::redundant_allocation)]
     fn inner(&self) -> Box<Arc<InnerHandle<()>>> {
         unsafe { ErasablePtr::unerase(self.inner) }
     }
@@ -943,13 +947,15 @@ impl fmt::Debug for AbortHandle {
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::HashSet, sync::atomic::AtomicUsize, time::Duration};
+
+    use join_set::JoinSet;
+
     use super::*;
     use crate::{
         runtime::{Handle, NodeHandle, Runtime},
         time,
     };
-    use join_set::JoinSet;
-    use std::{collections::HashSet, sync::atomic::AtomicUsize, time::Duration};
 
     #[test]
     fn spawn_in_block_on() {

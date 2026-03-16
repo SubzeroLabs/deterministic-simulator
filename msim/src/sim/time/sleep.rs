@@ -1,5 +1,6 @@
-use super::*;
 use std::{fmt, future::Future, pin::Pin, task::Poll};
+
+use super::*;
 
 /// Waits until `duration` has elapsed.
 pub fn sleep(duration: Duration) -> Sleep {
