@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},
 };
+
 use tracing::*;
 
 use crate::{
@@ -17,7 +18,6 @@ use crate::{
 };
 
 /// File system simulator.
-#[cfg_attr(docsrs, doc(cfg(msim)))]
 #[derive(Default)]
 pub struct FsSim {
     handles: Mutex<HashMap<NodeId, FsNodeHandle>>,

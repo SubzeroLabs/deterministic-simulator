@@ -2,20 +2,25 @@
 
 #![allow(missing_docs)]
 
-use std::fmt;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    fmt,
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-use futures::future::poll_fn;
-use futures::stream::{FuturesUnordered, Stream};
+use futures::{
+    future::poll_fn,
+    stream::{FuturesUnordered, Stream},
+};
+use tokio::task::LocalSet;
 
-use crate::runtime::Handle;
 #[cfg(tokio_unstable)]
 use crate::task::Id;
-use crate::task::{AbortHandle, JoinError, JoinHandle};
-
-use tokio::task::LocalSet;
+use crate::{
+    runtime::Handle,
+    task::{AbortHandle, JoinError, JoinHandle},
+};
 
 pub struct JoinSet<T> {
     inner: FuturesUnordered<JoinHandle<T>>,

@@ -1,5 +1,4 @@
-use tracing::{debug, trace};
-
+pub use std::net::ToSocketAddrs;
 use std::{
     future::Future,
     io,
@@ -14,19 +13,15 @@ use std::{
     time::Duration,
 };
 
-pub use std::net::ToSocketAddrs;
-
 use msim::net::{
     get_endpoint_from_socket,
     network::{Payload, PayloadType},
     try_get_endpoint_from_socket, Endpoint, OwnedFd,
 };
 use real_tokio::io::{AsyncRead, AsyncWrite, Interest, ReadBuf, Ready};
+use tracing::{debug, trace};
 
-pub use super::udp::*;
-pub use super::unix;
-pub use super::unix::*;
-
+pub use super::{udp::*, unix, unix::*};
 use crate::poller::Poller;
 
 /// Provide the tokio::net::TcpListener interface.
@@ -495,7 +490,7 @@ impl TcpStream {
     }
 
     pub async fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Ok(0);
         }
 
@@ -839,10 +834,8 @@ where
 #[cfg(test)]
 mod tests {
 
-    use super::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf},
-        TcpListener, TcpStream,
-    };
+    use std::{io, net::SocketAddr, sync::Arc};
+
     use bytes::{BufMut, BytesMut};
     use futures::join;
     use msim::{
@@ -855,8 +848,12 @@ mod tests {
         io::{AsyncReadExt, AsyncWriteExt},
         sync::Barrier,
     };
-    use std::{io, net::SocketAddr, sync::Arc};
     use tracing::{debug, trace};
+
+    use super::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpListener, TcpStream,
+    };
 
     async fn test_stream_read(mut stream: OwnedReadHalf) {
         trace!("test_stream_read");

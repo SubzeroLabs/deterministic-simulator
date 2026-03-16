@@ -1,11 +1,5 @@
 //! The msim runtime.
 
-use super::*;
-use crate::assert_send_sync;
-use crate::context::TaskEnterGuard;
-use crate::net::NetSim;
-use crate::task::{JoinHandle, NodeId};
-use ::rand::Rng;
 use std::{
     any::TypeId,
     collections::HashMap,
@@ -19,9 +13,18 @@ use std::{
     },
     time::Duration,
 };
-use tokio::sync::oneshot;
 
+use ::rand::Rng;
+use tokio::sync::oneshot;
 use tracing::{debug, error, trace, warn};
+
+use super::*;
+use crate::{
+    assert_send_sync,
+    context::TaskEnterGuard,
+    net::NetSim,
+    task::{JoinHandle, NodeId},
+};
 
 pub(crate) mod context;
 
@@ -410,6 +413,7 @@ impl Drop for WatchdogSuppressionGuard {
 pub struct EnterGuard(context::EnterGuard);
 
 /// Builds a node with custom configurations.
+#[allow(clippy::type_complexity)]
 pub struct NodeBuilder<'a> {
     handle: &'a Handle,
     name: Option<String>,
@@ -526,6 +530,7 @@ impl NodeHandle {
 
     /// Join the node.
     /// TODO: unimplemented
+    #[allow(clippy::result_unit_err)]
     pub fn join(self) -> Result<(), ()> {
         warn!("TODO: implement NodeHandle::join()");
         Ok(())
@@ -606,14 +611,16 @@ pub fn init_logger() {
 
 #[cfg(test)]
 mod tests {
-    use super::start_watchdog_with;
-    use crate::{runtime::Runtime, time};
     use std::{
         sync::{Arc, RwLock},
         time::Duration,
     };
+
     use tokio::sync::oneshot::channel;
     use tracing::{error, info};
+
+    use super::start_watchdog_with;
+    use crate::{runtime::Runtime, time};
 
     #[test]
     fn test_watchdog() {

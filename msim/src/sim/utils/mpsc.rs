@@ -1,12 +1,14 @@
 //! A multi-producer, single-consumer queue but allows
 //! consumer to randomly choose an element from the queue.
 
-use crate::rand::GlobalRng;
-use rand::Rng;
 use std::{
     fmt,
     sync::{Arc, Mutex, Weak},
 };
+
+use rand::Rng;
+
+use crate::rand::GlobalRng;
 
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {

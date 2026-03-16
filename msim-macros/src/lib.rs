@@ -125,20 +125,20 @@ pub fn test(_args: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// - `MSIM_TEST_CONFIG`: Set the config file path.
 ///
-///     By default, tests will use the default configuration.
+///   By default, tests will use the default configuration.
 ///
 /// - `MSIM_TEST_TIME_LIMIT`: Set the time limit for the test.
 ///
-///     The test will panic if time limit exceeded in the simulation.
+///   The test will panic if time limit exceeded in the simulation.
 ///
-///     By default, there is no time limit.
+///   By default, there is no time limit.
 ///
 /// - `MSIM_TEST_CHECK_DETERMINISM`: Enable determinism check.
 ///
-///     The test will be run at least twice with the same seed.
-///     If any non-determinism detected, it will panic as soon as possible.
+///   The test will be run at least twice with the same seed.
+///   If any non-determinism detected, it will panic as soon as possible.
 ///
-///     By default, it is disabled.
+///   By default, it is disabled.
 ///
 /// The test can also be provided a configuration by passing an expression with a type that
 /// can be made into() a TestConfig - SimConfig is the basic choice, see TestConfig for more
