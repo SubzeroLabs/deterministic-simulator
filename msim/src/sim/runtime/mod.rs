@@ -8,7 +8,7 @@ use std::{
     io::Write,
     net::IpAddr,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicUsize, Ordering},
         Arc, Mutex, RwLock,
     },
     time::Duration,
@@ -75,7 +75,7 @@ impl Runtime {
             task: task.handle().clone(),
             sims: Default::default(),
             config,
-            watchdog_suppressed: Arc::new(AtomicBool::new(false)),
+            watchdog_suppressed: Arc::new(AtomicUsize::new(0)),
         };
         let rt = Runtime { rand, task, handle };
         rt.add_simulator::<fs::FsSim>();
@@ -298,7 +298,7 @@ pub struct Handle {
     pub(crate) task: task::TaskHandle,
     pub(crate) sims: Arc<Mutex<HashMap<TypeId, Arc<dyn plugin::Simulator>>>>,
     pub(crate) config: SimConfig,
-    watchdog_suppressed: Arc<AtomicBool>,
+    watchdog_suppressed: Arc<AtomicUsize>,
 }
 
 impl Handle {
@@ -385,26 +385,29 @@ impl Handle {
     /// simulator may take a long time to drain ready tasks without advancing
     /// simulated time.
     pub fn suppress_watchdog(&self) -> WatchdogSuppressionGuard {
-        self.watchdog_suppressed.store(true, Ordering::Relaxed);
+        self.watchdog_suppressed.fetch_add(1, Ordering::Relaxed);
         WatchdogSuppressionGuard {
-            flag: Arc::clone(&self.watchdog_suppressed),
+            counter: Arc::clone(&self.watchdog_suppressed),
         }
     }
 
     /// Check whether the watchdog is currently suppressed.
     pub(crate) fn is_watchdog_suppressed(&self) -> bool {
-        self.watchdog_suppressed.load(Ordering::Relaxed)
+        self.watchdog_suppressed.load(Ordering::Relaxed) > 0
     }
 }
 
 /// RAII guard that re-enables the watchdog when dropped.
+///
+/// Multiple guards can be active simultaneously (e.g. from nested calls);
+/// the watchdog resumes only when all guards have been dropped.
 pub struct WatchdogSuppressionGuard {
-    flag: Arc<AtomicBool>,
+    counter: Arc<AtomicUsize>,
 }
 
 impl Drop for WatchdogSuppressionGuard {
     fn drop(&mut self) {
-        self.flag.store(false, Ordering::Relaxed);
+        self.counter.fetch_sub(1, Ordering::Relaxed);
     }
 }
 
