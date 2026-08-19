@@ -626,6 +626,33 @@ mod tests {
     use crate::{runtime::Runtime, time};
 
     #[test]
+    fn test_nested_watchdog_suppression() {
+        let runtime = Runtime::new();
+        let handle = runtime.handle();
+
+        assert!(!handle.is_watchdog_suppressed());
+
+        let outer_guard = handle.suppress_watchdog();
+        assert!(handle.is_watchdog_suppressed());
+
+        {
+            let inner_guard = handle.suppress_watchdog();
+            assert!(handle.is_watchdog_suppressed());
+
+            drop(inner_guard);
+
+            // Dropping the inner guard must not re-enable the watchdog
+            // while the outer guard is still active.
+            assert!(handle.is_watchdog_suppressed());
+        }
+
+        drop(outer_guard);
+
+        // The watchdog should resume only after all guards are dropped.
+        assert!(!handle.is_watchdog_suppressed());
+    }
+
+    #[test]
     fn test_watchdog() {
         // This test will panic if logging is enabled since the logging happens outside of a
         // runtime. To debug this test, uncomment init_logger(), and run the test with
