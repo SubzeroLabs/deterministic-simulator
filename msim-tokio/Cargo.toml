@@ -53,7 +53,7 @@ socket2 = ["real_tokio/socket2"]
 tokio-macros = ["real_tokio/tokio-macros"]
 
 [target.'cfg(msim)'.dependencies]
-msim = { version = "0.1.0", path = "../msim" }
+msim = { version = "0.1.0", path = "../msim", package = "rialo-msim" }
 
 [dependencies]
 tracing = "0.1"
