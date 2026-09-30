@@ -1,5 +1,5 @@
 [package]
-name = "msim-macros"
+name = "rialo-msim-macros"
 version = "0.1.0"
 edition = "2021"
 authors = ["Runji Wang <wangrunji0408@163.com>", "Mysten Labs <build@mystenlabs.com>"]

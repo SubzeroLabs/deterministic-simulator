@@ -1,5 +1,5 @@
 [package]
-name = "msim"
+name = "rialo-msim"
 version = "0.1.0"
 edition = "2021"
 authors = ["Runji Wang <wangrunji0408@163.com>", "Mysten Labs <build@mystenlabs.com>"]
@@ -11,6 +11,14 @@ license = "Apache-2.0"
 keywords = ["distributed-systems", "async", "deterministic", "simulation"]
 categories = ["asynchronous", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# The package identity is "rialo-msim" (see the package-identity-rename commit for why), but
+# the compiled library keeps the "msim" crate name: in-tree doctests, integration tests under
+# `tests/`, and consumers that depend on this crate under the key "msim" via
+# `package = "rialo-msim"` all refer to it as `msim::...` / `use msim`, and Cargo resolves
+# `use` paths and self-references by the library's crate name, not the package name.
+[lib]
+name = "msim"
 
 [features]
 default = ["macros", "rpc"]
@@ -24,7 +32,7 @@ futures = "0.3"
 lazy_static = "1.4"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-msim-macros = { version = "0.1.0", path = "../msim-macros", optional = true }
+msim-macros = { version = "0.1.0", path = "../msim-macros", optional = true, package = "rialo-msim-macros" }
 rand = { version = "0.8", features = ["small_rng"] }
 serde = { version = "1", features = ["derive"] }
 pin-project-lite = "0.2"
