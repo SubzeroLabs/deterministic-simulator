@@ -10,8 +10,8 @@ anyhow = "1"
 tokio = "1"
 jsonrpsee = { version = "0.16.1", features = ["server", "macros", "http-client", "ws-client", "wasm-client", "client-ws-transport", "client-web-transport", "client-core"] }
 jsonrpsee-core = "0.16.1"
-msim = { path = "../../msim" }
-msim-macros = { path = "../../msim-macros" }
+msim = { path = "../../msim", package = "rialo-msim" }
+msim-macros = { path = "../../msim-macros", package = "rialo-msim-macros" }
 
 
 [patch.crates-io]

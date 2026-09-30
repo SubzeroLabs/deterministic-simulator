@@ -1,5 +1,5 @@
 [package]
-name = "msim"
+name = "rialo-msim"
 version = "0.1.0"
 edition = "2021"
 authors = ["Runji Wang <wangrunji0408@163.com>", "Mysten Labs <build@mystenlabs.com>"]
@@ -24,7 +24,7 @@ futures = "0.3"
 lazy_static = "1.4"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-msim-macros = { version = "0.1.0", path = "../msim-macros", optional = true }
+msim-macros = { version = "0.1.0", path = "../msim-macros", optional = true, package = "rialo-msim-macros" }
 rand = { version = "0.8", features = ["small_rng"] }
 serde = { version = "1", features = ["derive"] }
 pin-project-lite = "0.2"
