@@ -946,9 +946,9 @@ impl NetSim {
     }
 
     /// Set IP address of a node.
-    pub fn set_ip(&self, node: NodeId, ip: IpAddr) {
+    pub fn set_ip(&self, node: NodeId, ip: IpAddr) -> io::Result<()> {
         let mut network = self.network.lock().unwrap();
-        network.set_ip(node, ip);
+        network.set_ip(node, ip)
     }
 
     /// Get IP address of a node.
@@ -994,6 +994,18 @@ impl NetSim {
     }
 }
 
+// SECURITY FIX: Explicitly handle empty ToSocketAddrs iterators by returning `InvalidInput`
+// instead of unwrapping, preventing panics and denial of service from malformed addresses.
+fn resolve_first_addr(addr: impl ToSocketAddrs) -> io::Result<SocketAddr> {
+    let mut addrs = addr.to_socket_addrs()?;
+    addrs.next().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "address resolution returned no addresses",
+        )
+    })
+}
+
 /// An endpoint.
 pub struct Endpoint {
     net: Arc<NetSim>,
@@ -1019,7 +1031,7 @@ impl Endpoint {
     pub fn bind_sync(proto: libc::c_int, addr: impl ToSocketAddrs) -> io::Result<Self> {
         let net = plugin::simulator::<NetSim>();
         let node = plugin::node();
-        let addr = addr.to_socket_addrs()?.next().unwrap();
+        let addr = resolve_first_addr(addr)?;
         let addr = net.network.lock().unwrap().bind(node, proto, addr)?;
         let ep = Endpoint {
             net,
@@ -1052,7 +1064,7 @@ impl Endpoint {
     pub async fn bind(proto: libc::c_int, addr: impl ToSocketAddrs) -> io::Result<Self> {
         let net = plugin::simulator::<NetSim>();
         let node = plugin::node();
-        let addr = addr.to_socket_addrs()?.next().unwrap();
+        let addr = resolve_first_addr(addr)?;
         net.rand_delay().await;
         let addr = net.network.lock().unwrap().bind(node, proto, addr)?;
         Ok(Endpoint {
@@ -1076,7 +1088,7 @@ impl Endpoint {
     pub fn connect_sync(proto: libc::c_int, addr: impl ToSocketAddrs) -> io::Result<Self> {
         let net = plugin::simulator::<NetSim>();
         let node = plugin::node();
-        let peer = addr.to_socket_addrs()?.next().unwrap();
+        let peer = resolve_first_addr(addr)?;
         let addr = if peer.ip().is_loopback() {
             SocketAddr::from((Ipv4Addr::LOCALHOST, 0))
         } else {
@@ -1112,17 +1124,21 @@ impl Endpoint {
     }
 
     /// Remove a tcp id number from this node.
-    pub fn deregister_tcp_id(&self, remote_sock: &SocketAddr, id: u32) {
+    pub fn deregister_tcp_id(&self, remote_sock: &SocketAddr, id: u32, remote_tcp_id: u32) {
         assert!(
             self.live_tcp_ids.lock().unwrap().remove(&id),
             "unknown tcp id {}",
             id
         );
-        self.net
-            .network
-            .lock()
-            .unwrap()
-            .deregister_tcp_id(self.node, self.proto, remote_sock, id);
+        // QUALITY FIX: Added `remote_tcp_id` propagation to ensure the peer mailbox 
+        // is correctly woken up on connection close, preventing liveness issues.
+        self.net.network.lock().unwrap().deregister_tcp_id(
+            self.node,
+            self.proto,
+            remote_sock,
+            id,
+            remote_tcp_id,
+        );
     }
 
     /// Returns the local socket address.
@@ -1153,7 +1169,7 @@ impl Endpoint {
         tag: u64,
         payload: Payload,
     ) -> io::Result<()> {
-        let dst = dst.to_socket_addrs()?.next().unwrap();
+        let dst = resolve_first_addr(dst)?;
         self.send_to_raw(dst, tag, payload).await
     }
 
@@ -1500,6 +1516,38 @@ mod tests {
                 .unwrap();
         });
         runtime.block_on(f).unwrap();
+    }
+
+    #[test]
+    fn set_ip_conflict_preserves_existing_mappings() {
+        let runtime = Runtime::new();
+        let ip1 = "10.0.0.1".parse::<IpAddr>().unwrap();
+        let ip2 = "10.0.0.2".parse::<IpAddr>().unwrap();
+        let node1 = runtime.create_node().ip(ip1).build();
+        let node2 = runtime.create_node().ip(ip2).build();
+
+        runtime.block_on(async move {
+            let error = simulator::<NetSim>().set_ip(node1.id(), ip2).unwrap_err();
+            assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+            assert_eq!(simulator::<NetSim>().get_ip(node1.id()), Some(ip1));
+            assert_eq!(simulator::<NetSim>().get_ip(node2.id()), Some(ip2));
+        });
+    }
+
+    #[test]
+    fn bind_without_node_ip_returns_error() {
+        let runtime = Runtime::new();
+        let node = runtime.create_node().build();
+
+        let task = node.spawn(async move {
+            let error = Endpoint::bind(libc::SOCK_STREAM, "0.0.0.0:0")
+                .await
+                .err()
+                .unwrap();
+            assert_eq!(error.kind(), io::ErrorKind::AddrNotAvailable);
+        });
+
+        runtime.block_on(task).unwrap();
     }
 
     #[test]

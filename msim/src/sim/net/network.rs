@@ -146,17 +146,37 @@ impl Network {
         }
     }
 
-    pub fn set_ip(&mut self, id: NodeId, ip: IpAddr) {
+    pub fn set_ip(&mut self, id: NodeId, ip: IpAddr) -> io::Result<()> {
         debug!("set-ip: {id}: {ip}");
-        let node = self.nodes.get_mut(&id).expect("node not found");
-        if let Some(old_ip) = node.ip.replace(ip) {
+        // SECURITY FIX: Validate node existence and IP conflicts before mutating the `addr_to_node` map.
+        // Returns typed `AddrInUse` or `NotFound` errors instead of panicking, preserving deterministic simulator liveness.
+        let old_ip = self
+            .nodes
+            .get(&id)
+            .ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, format!("node not found: {id}"))
+            })?
+            .ip;
+
+        if old_ip == Some(ip) {
+            return Ok(());
+        }
+
+        if let Some(existing_node) = self.addr_to_node.get(&ip).copied() {
+            return Err(io::Error::new(
+                io::ErrorKind::AddrInUse,
+                format!("IP address {ip} is already assigned to {existing_node}"),
+            ));
+        }
+
+        if let Some(old_ip) = old_ip {
             self.addr_to_node.remove(&old_ip);
         }
-        let old_node = self.addr_to_node.insert(ip, id);
-        if let Some(old_node) = old_node {
-            panic!("IP conflict: {ip} {old_node}");
-        }
-        // TODO: what if we change the IP when there are opening sockets?
+        self.addr_to_node.insert(ip, id);
+        self.nodes.get_mut(&id).expect("node was checked above").ip = Some(ip);
+
+        // TODO: what if we change the IP when there are open sockets?
+        Ok(())
     }
 
     pub fn get_ip(&self, id: NodeId) -> Option<IpAddr> {
@@ -197,16 +217,21 @@ impl Network {
         mut addr: SocketAddr,
     ) -> io::Result<SocketAddr> {
         debug!("binding ({}): {addr} -> {node_id}", proto_str(proto));
-        let node = self.nodes.get_mut(&node_id).expect("node not found");
-        // resolve IP if unspecified
+        let node = self.nodes.get_mut(&node_id).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("node not found: {node_id}"),
+            )
+        })?;
+        // Resolve an unspecified address using the node's configured IP address.
         if addr.ip().is_unspecified() {
-            if let Some(ip) = node.ip {
-                addr.set_ip(ip);
-            } else {
-                todo!("try to bind 0.0.0.0, but the node IP is also unspecified");
-            }
+            // SECURITY FIX: Return `AddrNotAvailable` instead of triggering `todo!()` or panicking when binding to an unspecified address without a configured node IP.
+            let ip = node.ip.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::AddrNotAvailable, "node IP is not configured")
+            })?;
+            addr.set_ip(ip);
         } else if addr.ip().is_loopback() {
-        } else if addr.ip() != node.ip.expect("node IP is unset") {
+        } else if node.ip != Some(addr.ip()) {
             return Err(io::Error::new(
                 io::ErrorKind::AddrNotAvailable,
                 format!("invalid address: {addr}"),
@@ -261,6 +286,7 @@ impl Network {
         proto: libc::c_int,
         remote_addr: &SocketAddr,
         tcp_id: u32,
+        remote_tcp_id: u32,
     ) {
         trace!("deregistering tcp id {} for node {}", tcp_id, node);
 
@@ -281,6 +307,7 @@ impl Network {
             return;
         };
 
+        // SECURITY/QUALITY FIX: Retrieve the remote socket using both node ID and remote TCP ID, and wake its mailbox correctly.
         if let Some(socket) = self
             .nodes
             .get_mut(node_id)
@@ -288,7 +315,7 @@ impl Network {
             .tap_none(|| debug!("No node found for {node_id}"))
             .flatten()
         {
-            socket.lock().unwrap().wake_tcp_connection(tcp_id);
+            socket.lock().unwrap().wake_tcp_connection(remote_tcp_id);
         }
     }
 
