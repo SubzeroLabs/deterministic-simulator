@@ -19,6 +19,19 @@ pub(crate) fn try_current<T>(map: impl FnOnce(&Handle) -> T) -> Option<T> {
     CONTEXT.with(move |ctx| ctx.borrow().as_ref().map(map))
 }
 
+/// Returns whether a simulator context is currently entered on this thread.
+///
+/// This is deliberately infallible: it is called from the `extern "C"` library
+/// interceptors, which cannot unwind, and it may run while `CONTEXT` is already
+/// mutably borrowed (inside `enter`) or has been destroyed (during thread-local
+/// teardown). Both cases mean "no usable context", so they answer `false`
+/// instead of panicking.
+pub(crate) fn has_context() -> bool {
+    CONTEXT
+        .try_with(|ctx| ctx.try_borrow().map(|c| c.is_some()).unwrap_or(false))
+        .unwrap_or(false)
+}
+
 pub(crate) fn try_current_task() -> Option<Arc<TaskInfo>> {
     TASK.with(|task| task.borrow().clone())
 }
