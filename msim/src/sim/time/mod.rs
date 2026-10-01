@@ -580,13 +580,16 @@ define_sys_interceptor!(
                 });
             }
 
-            // used by Instant
+            // Used by Instant.
             libc::CLOCK_MONOTONIC | libc::CLOCK_MONOTONIC_RAW | libc::CLOCK_MONOTONIC_COARSE => {
-                // Instant is the same layout as timespec on linux
-                ts.write(std::mem::transmute::<
-                    crate::sim::time::instant::Instant,
-                    libc::timespec,
-                >(time.now_instant()));
+                // SECURITY FIX: Removed the opaque Instant to timespec transmute.
+                // Serialize the simulated duration explicitly; std::time::Instant is opaque and
+                // its internal layout is not guaranteed to match libc::timespec.
+                let duration = time.elapsed();
+                ts.write(libc::timespec {
+                    tv_sec: duration.as_secs() as _,
+                    tv_nsec: duration.subsec_nanos() as _,
+                });
             }
 
             // Used by rocksdb performance timers.
