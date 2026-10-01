@@ -519,7 +519,7 @@ impl NodeHandle {
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
-        self.task.spawn(async move { f() })
+        self.task.spawn_blocking(f)
     }
 
     /// Spawn a on the local thread.

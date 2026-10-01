@@ -81,7 +81,7 @@ impl std::fmt::Debug for dyn InterNodeLatency + Send + Sync + 'static {
 pub struct InterNodeLatencyMap(HashMap<(NodeId, NodeId), LatencyDistribution>);
 
 impl InterNodeLatencyMap {
-    /// Create an empty latency map.
+    /// Create a new InterNodeLatencyMap with no latencies defined.
     pub fn new() -> Self {
         Self(HashMap::new())
     }
@@ -121,7 +121,7 @@ impl InterNodeLatency for InterNodeLatencyMap {
 pub struct NodeLatencyMap(HashMap<NodeId, LatencyDistribution>);
 
 impl NodeLatencyMap {
-    /// Create an empty latency map.
+    /// Create a new NodeLatencyMap with no latencies defined.
     pub fn new() -> Self {
         Self(HashMap::new())
     }
