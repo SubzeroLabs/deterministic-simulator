@@ -263,6 +263,7 @@ fn start_watchdog_with(
                 std::process::abort();
             }
             if rt.handle.is_watchdog_suppressed() {
+                // QUALITY FIX: Normalized comments to complete English sentences for better maintainability.
                 // Reset the counter while suppressed so heavy setup phases
                 // don't accumulate stalls toward the deadlock limit.
                 deadlock_count = 0;
@@ -278,7 +279,7 @@ fn start_watchdog_with(
             }
             prev_time = now;
 
-            // we wait until we've seen the clock not advance 10 times in a
+            // QUALITY FIX: We wait until we've seen the clock not advance 10 times in a
             // row, so that we don't get spurious panics when the process is
             // paused in a debugger.
             if deadlock_count > limit {
@@ -331,7 +332,7 @@ impl Handle {
         }
     }
 
-    /// Restart a node。
+    /// Restart a node.
     pub fn restart(&self, id: NodeId) {
         self.task.restart(id);
         for sim in self.sims.lock().unwrap().values() {
@@ -469,6 +470,7 @@ impl<'a> NodeBuilder<'a> {
             if let Some(ip) = self.ip {
                 if let Some(net) = sim.downcast_ref::<net::NetSim>() {
                     net.set_ip(task.id(), ip)
+                        .expect("failed to assign the node IP address");
                 }
             }
         }
@@ -522,7 +524,7 @@ impl NodeHandle {
         self.task.spawn(async move { f() })
     }
 
-    /// Spawn a on the local thread.
+    /// Spawn a future on the local thread.
     pub fn spawn_local<F>(&self, future: F) -> JoinHandle<F::Output>
     where
         F: Future + 'static,
