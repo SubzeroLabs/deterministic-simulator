@@ -63,9 +63,22 @@ impl GlobalRng {
         // XXX: call this function to make sure it won't be gc.
         unsafe { getentropy(std::ptr::null_mut(), 0) };
         if !init_std_random_state(seed) {
-            tracing::warn!(
-                "failed to initialize std random state, std HashMap will not be deterministic"
-            );
+            // This is not a recoverable warning: std's `RandomState` keys are cached once
+            // per thread, so if anything on this thread built a `HashMap`/`HashSet` before
+            // the runtime, those keys are already fixed from real entropy. Every std hash
+            // container in the simulation then iterates in a host-random order and the run
+            // is no longer reproducible from its seed - silently.
+            //
+            // A `tracing` warning alone is invisible in the common case (a test binary with
+            // no subscriber installed), so report it on stderr too. Callers who want a hard
+            // failure can promote this to a panic.
+            let msg = "msim: failed to seed std's RandomState, so std HashMap/HashSet \
+                       iteration order will NOT be deterministic and this run is not \
+                       reproducible from its seed. A hash container was already built on \
+                       this thread before the Runtime; construct the Runtime first, or run \
+                       each simulation on a fresh thread.";
+            eprintln!("{msg}");
+            tracing::warn!("{}", msg);
         }
 
         let inner = Inner {
@@ -306,5 +319,20 @@ mod tests {
             seqs.insert(seq);
         }
         assert_eq!(seqs.len(), 3, "hashmap is not deterministic");
+    }
+
+    /// std caches its `RandomState` keys once per thread, so only the first initialization
+    /// on a thread can seed them. Any later attempt cannot re-seed and must be *reported*
+    /// as a failure - otherwise the simulation keeps the previously cached (possibly
+    /// real-entropy) keys and silently loses reproducibility.
+    #[test]
+    fn repeated_std_random_state_init_reports_failure() {
+        // consume this thread's one-shot key cache (may already be consumed, which is fine)
+        let _ = super::init_std_random_state(1);
+        // a second attempt must not claim success
+        assert!(
+            !super::init_std_random_state(2),
+            "re-seeding std's RandomState is impossible and must be reported as failed"
+        );
     }
 }
