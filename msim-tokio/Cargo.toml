@@ -58,7 +58,7 @@ msim = { version = "0.1.0", path = "../msim", package = "rialo-msim" }
 [dependencies]
 tracing = "0.1"
 
-real_tokio = { git = "https://github.com/SubzeroLabs/tokio-msim-fork.git", rev = "234104b8ccfaa418e5f5cd0d10837cfbe9b9410a", package = "real_tokio", features = ["full"] }
+real_tokio = { git = "https://github.com/MystenLabs/tokio-msim-fork.git", rev = "e8ce7593bfbfbbd7c7ee8671faecb062a8966b2d", package = "real_tokio", features = ["full"] }
 bytes = { version = "1.1" }
 futures = { version = "0.3.0", features = ["async-await"] }
 mio = { version = "0.8.1", features = ["net"] }
