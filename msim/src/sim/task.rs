@@ -1226,6 +1226,32 @@ mod tests {
     }
 
     #[test]
+    fn test_joinset_try_join_next() {
+        let runtime = Runtime::new();
+
+        runtime.block_on(async move {
+            let mut join_set: JoinSet<u32> = JoinSet::new();
+
+            // An empty set has nothing to hand back.
+            assert!(join_set.try_join_next().is_none());
+
+            // A task that has not finished is not a result yet, and the poll does not block.
+            join_set.spawn(async move {
+                time::sleep(Duration::from_secs(1)).await;
+                1
+            });
+            assert!(join_set.try_join_next().is_none());
+
+            // Once it has finished, its output is available without awaiting the set.
+            time::sleep(Duration::from_secs(2)).await;
+            assert_eq!(join_set.try_join_next().unwrap().unwrap(), 1);
+
+            // Draining it leaves the set empty again.
+            assert!(join_set.try_join_next().is_none());
+        });
+    }
+
+    #[test]
     fn spawn_blocking_basic() {
         let runtime = Runtime::new();
         runtime.block_on(async {
