@@ -6,7 +6,7 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{Context, Poll, Waker},
 };
 
 use futures::{
@@ -93,6 +93,22 @@ impl<T: 'static> JoinSet<T> {
 
     pub async fn join_next(&mut self) -> Option<Result<T, JoinError>> {
         poll_fn(|cx| self.poll_join_next(cx)).await
+    }
+
+    /// Tries to join one of the tasks in the set that has completed and return its output.
+    ///
+    /// Returns `None` if there are no completed tasks, or if the set is empty.
+    ///
+    /// The poll is driven by a no-op waker, so it neither parks the caller nor leaves a
+    /// wakeup owed to one: a task that completes after this returns is observed by the next
+    /// poll of the set, which re-registers whatever waker that poll carries. A caller that
+    /// wants to be woken on completion must await `join_next` instead.
+    pub fn try_join_next(&mut self) -> Option<Result<T, JoinError>> {
+        let mut cx = Context::from_waker(Waker::noop());
+        match self.poll_join_next(&mut cx) {
+            Poll::Ready(res) => res,
+            Poll::Pending => None,
+        }
     }
 
     pub async fn shutdown(&mut self) {
