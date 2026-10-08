@@ -42,10 +42,8 @@ jobs:
       - name: Test std
         run: cargo test --release --no-fail-fast
       - name: Test sim
-        # Skip doc tests (outdated API signatures) and known-broken TCP hangup tests.
-        run: >-
-          cargo test --release --no-fail-fast --lib --bins
-          -- --skip tcp_test_client_hangup_read --skip tcp_test_server_hangup_read
+        # Skip doc tests (outdated API signatures).
+        run: cargo test --release --no-fail-fast --lib --bins
         env:
           RUSTFLAGS: "--cfg msim"
 
