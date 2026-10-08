@@ -310,7 +310,7 @@ impl TcpState {
 impl Drop for TcpState {
     fn drop(&mut self) {
         self.ep
-            .deregister_tcp_id(&self.remote_sock, self.local_tcp_id);
+            .deregister_tcp_id(&self.remote_sock, self.local_tcp_id, self.remote_tcp_id);
     }
 }
 

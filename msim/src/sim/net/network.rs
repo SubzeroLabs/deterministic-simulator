@@ -261,6 +261,7 @@ impl Network {
         proto: libc::c_int,
         remote_addr: &SocketAddr,
         tcp_id: u32,
+        remote_tcp_id: u32,
     ) {
         trace!("deregistering tcp id {} for node {}", tcp_id, node);
 
@@ -274,7 +275,8 @@ impl Network {
             );
         };
 
-        // wake the remote end in case it is waiting on a read.
+        // wake the remote end in case it is waiting on a read. The remote end keys its read
+        // wakers by its own tcp id, which is our remote_tcp_id, not our tcp_id.
         let Some(node_id) = &self.get_node_for_addr(&remote_addr.ip()) else {
             // node may have been deleted
             debug!("No node found for {remote_addr}");
@@ -288,7 +290,7 @@ impl Network {
             .tap_none(|| debug!("No node found for {node_id}"))
             .flatten()
         {
-            socket.lock().unwrap().wake_tcp_connection(tcp_id);
+            socket.lock().unwrap().wake_tcp_connection(remote_tcp_id);
         }
     }
 

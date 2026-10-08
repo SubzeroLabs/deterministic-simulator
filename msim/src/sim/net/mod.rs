@@ -1111,18 +1111,21 @@ impl Endpoint {
         id
     }
 
-    /// Remove a tcp id number from this node.
-    pub fn deregister_tcp_id(&self, remote_sock: &SocketAddr, id: u32) {
+    /// Remove a tcp id number from this node, and wake any read the peer has pending on the
+    /// session. `remote_tcp_id` is the id the peer allocated for its end of the session.
+    pub fn deregister_tcp_id(&self, remote_sock: &SocketAddr, id: u32, remote_tcp_id: u32) {
         assert!(
             self.live_tcp_ids.lock().unwrap().remove(&id),
             "unknown tcp id {}",
             id
         );
-        self.net
-            .network
-            .lock()
-            .unwrap()
-            .deregister_tcp_id(self.node, self.proto, remote_sock, id);
+        self.net.network.lock().unwrap().deregister_tcp_id(
+            self.node,
+            self.proto,
+            remote_sock,
+            id,
+            remote_tcp_id,
+        );
     }
 
     /// Returns the local socket address.
